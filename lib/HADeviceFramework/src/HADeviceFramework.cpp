@@ -157,7 +157,9 @@ void Framework::saveParametersCallback() {
   }
 
   activeInstance_->configureDevice();
-  activeInstance_->mqtt_.disconnect();
+  if (activeInstance_->mqttStarted_) {
+    activeInstance_->mqtt_.disconnect();
+  }
   activeInstance_->mqttStarted_ = false;
   Serial.println("Saved device configuration.");
 }

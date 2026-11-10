@@ -84,6 +84,7 @@ class Framework {
   static constexpr size_t kPasswordLength = 64;
   static constexpr size_t kDeviceNameLength = 32;
   static constexpr size_t kMaxMdnsServices = 4;
+  static constexpr unsigned long kMqttRetryIntervalMs = 10000;
 
   // This layout preserves Crystalised's persisted MQTT record. Reserved fields
   // are intentionally ignored and cleared on future configuration saves.
@@ -145,6 +146,7 @@ class Framework {
   bool mqttStarted_ = false;
   bool mdnsStarted_ = false;
   wl_status_t previousWifiStatus_ = WL_IDLE_STATUS;
+  unsigned long lastMqttAttemptMs_ = 0;
 };
 
 }  // namespace ha_device

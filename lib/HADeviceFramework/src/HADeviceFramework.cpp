@@ -51,6 +51,7 @@ bool Framework::begin() {
   configureDevice();
   started_ = true;
   previousWifiStatus_ = WiFi.status();
+  lastMqttAttemptMs_ = millis() - kMqttRetryIntervalMs;
   wifiManager_.autoConnect(deviceInfo_.configurationAccessPoint);
   wifiManager_.startWebPortal();
   return WiFi.status() == WL_CONNECTED;
@@ -83,7 +84,10 @@ void Framework::loop() {
 #endif
   }
 
-  if (!mqttStarted_) {
+  if (
+      !mqttStarted_ &&
+      millis() - lastMqttAttemptMs_ >= kMqttRetryIntervalMs
+  ) {
     connectMqtt();
   }
   if (mqttStarted_) {
@@ -158,6 +162,8 @@ void Framework::saveParametersCallback() {
 
   activeInstance_->configureDevice();
   activeInstance_->mqttStarted_ = false;
+  activeInstance_->lastMqttAttemptMs_ =
+      millis() - kMqttRetryIntervalMs;
   Serial.println("Saved device configuration.");
 }
 
@@ -393,6 +399,7 @@ void Framework::startMdns() {
 }
 
 void Framework::connectMqtt() {
+  lastMqttAttemptMs_ = millis();
   if (credentials_.username[0] == '\0' || credentials_.password[0] == '\0') {
     return;
   }

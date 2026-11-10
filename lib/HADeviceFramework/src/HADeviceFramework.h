@@ -74,6 +74,7 @@ class Framework {
 
   void setWebServerCallback(std::function<void()> callback);
   void addMdnsService(const char* service, const char* protocol, uint16_t port);
+  void setDebugStream(Print* stream);
   void resetConfiguration();
 
  private:
@@ -126,6 +127,7 @@ class Framework {
   void configureDevice();
   void startMdns();
   void connectMqtt();
+  void log_(const char* format, ...) const;
 
   DeviceInfo deviceInfo_;
   MqttCredentials credentials_ = {};
@@ -142,6 +144,7 @@ class Framework {
   size_t mdnsServiceCount_ = 0;
   char mdnsHostname_[kDeviceNameLength] = {};
   char configurationUrl_[64] = {};
+  Print* debugStream_ = &Serial;
   bool started_ = false;
   bool mqttStarted_ = false;
   bool mdnsStarted_ = false;

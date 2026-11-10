@@ -1,6 +1,7 @@
 #include "HADeviceFramework.h"
 
 #include <EEPROM.h>
+#include <stdarg.h>
 
 #if defined(ESP8266)
 #include <ESP8266mDNS.h>
@@ -31,7 +32,6 @@ bool Framework::begin() {
     return false;
   }
 
-  Serial.begin(115200);
   EEPROM.begin(sizeof(MqttCredentials) + sizeof(DeviceNameSettings));
   createDefaultDeviceName();
   loadSettings();
@@ -156,7 +156,9 @@ void Framework::resetConfiguration() {
 
 void Framework::saveParametersCallback() {
   if (activeInstance_ == nullptr || !activeInstance_->saveSettings()) {
-    Serial.println("Failed to save device configuration.");
+    if (activeInstance_ != nullptr) {
+      activeInstance_->log_("Failed to save device configuration.\n");
+    }
     return;
   }
 
@@ -164,7 +166,7 @@ void Framework::saveParametersCallback() {
   activeInstance_->mqttStarted_ = false;
   activeInstance_->lastMqttAttemptMs_ =
       millis() - kMqttRetryIntervalMs;
-  Serial.println("Saved device configuration.");
+  activeInstance_->log_("Saved device configuration.\n");
 }
 
 uint32_t Framework::checksum(const void* data, size_t length) {
@@ -294,7 +296,7 @@ bool Framework::saveSettings() {
       !brokerAddressIsValid(brokerParameter_.getValue()) ||
       !deviceNameIsValid(deviceNameParameter_.getValue())
   ) {
-    Serial.println("Device name or MQTT broker host is invalid.");
+    log_("Device name or MQTT broker host is invalid.\n");
     return false;
   }
 
@@ -395,7 +397,7 @@ void Framework::startMdns() {
   }
   device_.setConfigurationUrl(configurationUrl_);
   mdnsStarted_ = true;
-  Serial.printf("mDNS started: %s\n", configurationUrl_);
+  log_("mDNS started: %s\n", configurationUrl_);
 }
 
 void Framework::connectMqtt() {
@@ -410,12 +412,28 @@ void Framework::connectMqtt() {
       credentials_.username,
       credentials_.password
   );
-  Serial.printf(
+  log_(
       "MQTT initialization for %s:%u: %s\n",
       credentials_.brokerAddress,
       deviceInfo_.mqttPort,
       mqttStarted_ ? "started" : "failed"
   );
+}
+
+void Framework::setDebugStream(Print* stream) {
+  debugStream_ = stream;
+}
+
+void Framework::log_(const char* format, ...) const {
+  if (debugStream_ == nullptr) {
+    return;
+  }
+  char buffer[128];
+  va_list args;
+  va_start(args, format);
+  vsnprintf(buffer, sizeof(buffer), format, args);
+  va_end(args);
+  debugStream_->print(buffer);
 }
 
 }  // namespace ha_device

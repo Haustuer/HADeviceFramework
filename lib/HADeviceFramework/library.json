@@ -1,0 +1,12 @@
+{
+  "name": "HADeviceFramework",
+  "version": "0.1.0",
+  "description": "Wi-Fi provisioning, Crystalised-compatible MQTT settings, mDNS, and ArduinoHA lifecycle.",
+  "keywords": ["home-assistant", "mqtt", "wifi", "arduino"],
+  "frameworks": ["arduino"],
+  "platforms": ["espressif8266", "espressif32"],
+  "dependencies": {
+    "dawidchyrzynski/home-assistant-integration": "^2.1.0",
+    "tzapu/WiFiManager": "^2.0.17"
+  }
+}

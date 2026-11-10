@@ -75,10 +75,13 @@ class Framework {
   void setWebServerCallback(std::function<void()> callback);
   void addMdnsService(const char* service, const char* protocol, uint16_t port);
   void setDebugStream(Print* stream);
+  void registerAppData(void* data, size_t size);
+  void saveAppData();
   void resetConfiguration();
 
  private:
   static constexpr uint32_t kMqttCredentialsMagic = 0x43525957;
+  static constexpr uint32_t kAppDataMagic = 0x41505044;
   static constexpr uint32_t kDeviceNameMagic = 0x4352594E;
   static constexpr size_t kBrokerLength = 32;
   static constexpr size_t kUsernameLength = 32;
@@ -101,6 +104,12 @@ class Framework {
   struct DeviceNameSettings {
     uint32_t magic;
     char name[kDeviceNameLength];
+    uint32_t checksum;
+  };
+
+  struct AppDataHeader {
+    uint32_t magic;
+    uint32_t size;
     uint32_t checksum;
   };
 
@@ -127,6 +136,7 @@ class Framework {
   void configureDevice();
   void startMdns();
   void connectMqtt();
+  void loadAppData();
   void log_(const char* format, ...) const;
 
   DeviceInfo deviceInfo_;
@@ -144,6 +154,8 @@ class Framework {
   size_t mdnsServiceCount_ = 0;
   char mdnsHostname_[kDeviceNameLength] = {};
   char configurationUrl_[64] = {};
+  void* appDataPtr_ = nullptr;
+  size_t appDataSize_ = 0;
   Print* debugStream_ = &Serial;
   bool started_ = false;
   bool mqttStarted_ = false;

@@ -32,9 +32,12 @@ bool Framework::begin() {
     return false;
   }
 
-  EEPROM.begin(sizeof(MqttCredentials) + sizeof(DeviceNameSettings));
+  const size_t eepromSize = sizeof(MqttCredentials) + sizeof(DeviceNameSettings) +
+      (appDataPtr_ ? sizeof(AppDataHeader) + appDataSize_ : 0);
+  EEPROM.begin(eepromSize);
   createDefaultDeviceName();
   loadSettings();
+  loadAppData();
 
   deviceNameParameter_.setValue(deviceNameSettings_.name, sizeof(deviceNameSettings_.name));
   brokerParameter_.setValue(credentials_.brokerAddress, sizeof(credentials_.brokerAddress));
@@ -418,6 +421,64 @@ void Framework::connectMqtt() {
       deviceInfo_.mqttPort,
       mqttStarted_ ? "started" : "failed"
   );
+}
+
+void Framework::registerAppData(void* data, size_t size) {
+  if (started_) {
+    return;
+  }
+  appDataPtr_ = data;
+  appDataSize_ = size;
+}
+
+void Framework::saveAppData() {
+  if (appDataPtr_ == nullptr) {
+    return;
+  }
+
+  const size_t offset = sizeof(MqttCredentials) + sizeof(DeviceNameSettings);
+  const uint8_t* src = static_cast<const uint8_t*>(appDataPtr_);
+
+  AppDataHeader header;
+  header.magic = kAppDataMagic;
+  header.size = static_cast<uint32_t>(appDataSize_);
+  header.checksum = checksum(src, appDataSize_);
+
+  EEPROM.put(offset, header);
+  for (size_t i = 0; i < appDataSize_; ++i) {
+    EEPROM.write(offset + sizeof(AppDataHeader) + i, src[i]);
+  }
+  EEPROM.commit();
+}
+
+void Framework::loadAppData() {
+  if (appDataPtr_ == nullptr) {
+    return;
+  }
+
+  const size_t offset = sizeof(MqttCredentials) + sizeof(DeviceNameSettings);
+
+  AppDataHeader header;
+  EEPROM.get(offset, header);
+
+  if (header.magic != kAppDataMagic || header.size != static_cast<uint32_t>(appDataSize_)) {
+    return;
+  }
+
+  const size_t dataOffset = offset + sizeof(AppDataHeader);
+  uint32_t csum = 2166136261UL;
+  for (size_t i = 0; i < appDataSize_; ++i) {
+    csum ^= EEPROM.read(dataOffset + i);
+    csum *= 16777619UL;
+  }
+  if (csum != header.checksum) {
+    return;
+  }
+
+  uint8_t* dest = static_cast<uint8_t*>(appDataPtr_);
+  for (size_t i = 0; i < appDataSize_; ++i) {
+    dest[i] = EEPROM.read(dataOffset + i);
+  }
 }
 
 void Framework::setDebugStream(Print* stream) {
